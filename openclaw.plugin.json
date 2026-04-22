@@ -1,0 +1,62 @@
+{
+  "id": "cogna8",
+  "name": "Cogna8 Action Authority",
+  "description": "Gate OpenClaw tool calls through Cogna8's action authority runtime",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "apiKey": {
+        "type": "string",
+        "minLength": 10,
+        "description": "Cogna8 API key. Generate one at https://openclaw.cogna8.ai/dashboard/keys"
+      },
+      "serverUrl": {
+        "type": "string",
+        "default": "https://openclaw-api.cogna8.ai",
+        "description": "Cogna8 service base URL"
+      },
+      "agentId": {
+        "type": "string",
+        "default": "default",
+        "description": "Agent identifier sent to Cogna8. Use default if you do not manage per-agent rules yet."
+      },
+      "timeoutMs": {
+        "type": "integer",
+        "default": 3000,
+        "minimum": 100,
+        "maximum": 30000,
+        "description": "Evaluate request timeout in milliseconds"
+      },
+      "failureMode": {
+        "type": "string",
+        "enum": ["open", "closed"],
+        "default": "open",
+        "description": "Open allows tool calls on service failure. Closed blocks tool calls on service failure."
+      }
+    },
+    "required": ["apiKey"]
+  },
+  "uiHints": {
+    "apiKey": {
+      "label": "Cogna8 API key",
+      "help": "Generate a key in the OpenClaw Portal",
+      "placeholder": "cg8_sk_...",
+      "sensitive": true
+    },
+    "serverUrl": {
+      "label": "Cogna8 server URL"
+    },
+    "agentId": {
+      "label": "Agent ID"
+    },
+    "timeoutMs": {
+      "label": "Timeout in milliseconds",
+      "advanced": true
+    },
+    "failureMode": {
+      "label": "Failure mode",
+      "help": "Choose whether tool calls are allowed or blocked when Cogna8 is unavailable"
+    }
+  }
+}

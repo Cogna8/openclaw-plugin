@@ -1,0 +1,7 @@
+node_modules
+coverage
+dist
+.vscode
+.DS_Store
+package-lock.json
+.claude/
