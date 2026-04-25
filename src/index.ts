@@ -3,7 +3,12 @@ import type { OpenClawPluginApi } from "openclaw/plugin-sdk/plugin-entry";
 import { normalizeConfig } from "./config.js";
 import { callEvaluate } from "./evaluate-client.js";
 import { registerAgentOnce, PLUGIN_VERSION } from "./register-client.js";
-import type { Cogna8PluginConfig, EvaluateRequest } from "./types.js";
+import { reportResolution } from "./resolve-client.js";
+import type {
+  Cogna8PluginConfig,
+  EvaluateRequest,
+  PluginApprovalResolution,
+} from "./types.js";
 import { clampString, truncateRawInput } from "./utils.js";
 
 let didRegister = false;
@@ -43,6 +48,32 @@ export default definePluginEntry({
 
       try {
         const result = await callEvaluate(config, request);
+
+        if (result.decision === "confirm") {
+          api.logger.info(
+            `[cogna8] Approval required for ${request.tool_call.tool_name} (decision_id=${result.decision_id})`,
+          );
+
+          return {
+            requireApproval: {
+              title: result.prompt.title,
+              description: result.prompt.description,
+              severity: result.prompt.severity,
+              timeoutMs: result.timeout_ms,
+              timeoutBehavior: result.timeout_behavior,
+              pluginId: "cogna8",
+              onResolution: async (decision: PluginApprovalResolution) => {
+                try {
+                  await reportResolution(config, result.decision_id, decision);
+                } catch (err: unknown) {
+                  api.logger.warn(
+                    `[cogna8] Failed to report resolution for ${result.decision_id}: ${err instanceof Error ? err.message : String(err)}`,
+                  );
+                }
+              },
+            },
+          };
+        }
 
         if (result.decision === "block") {
           api.logger.info(

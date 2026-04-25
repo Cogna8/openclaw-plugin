@@ -20,11 +20,46 @@ export interface EvaluateRequest {
   };
 }
 
-export interface EvaluateResponse {
-  decision: "allow" | "block";
-  mode: "normal" | "degraded";
-  rule: null | { id: string; type: string };
-  reason_code: string | null;
-  message: string | null;
-  evaluation: { id: string | null; stored: boolean };
-}
+export type RuleRef = { id: string; type: string };
+export type EvalMode = "normal" | "degraded";
+export type EvalEnvelope = { id: string | null; stored: boolean };
+
+export type EvaluateResponse =
+  | {
+      decision: "allow";
+      mode: EvalMode;
+      evaluation: EvalEnvelope;
+      rule?: RuleRef | null;
+      reason_code?: string | null;
+      message?: string | null;
+    }
+  | {
+      decision: "block";
+      mode: EvalMode;
+      evaluation: EvalEnvelope;
+      rule?: RuleRef | null;
+      reason_code?: string | null;
+      message?: string | null;
+    }
+  | {
+      decision: "confirm";
+      decision_id: string;
+      mode: EvalMode;
+      evaluation: { id: string; stored: true };
+      rule: RuleRef;
+      reason_code: "confirmation_required";
+      prompt: {
+        title: string;
+        description: string;
+        severity: "warning" | "critical";
+      };
+      timeout_ms: number;
+      timeout_behavior: "deny";
+    };
+
+export type PluginApprovalResolution =
+  | "allow-once"
+  | "allow-always"
+  | "deny"
+  | "timeout"
+  | "cancelled";
