@@ -1,6 +1,6 @@
 // Keep in sync with package.json version on every release.
 // MUST update both package.json version and this constant in the same commit.
-export const PLUGIN_VERSION = "0.2.1";
+export const PLUGIN_VERSION = "0.3.0";
 
 export type RegisterAgentPayload = {
   agent: {
@@ -45,8 +45,8 @@ export async function registerAgentOnce({
 }: RegisterClientDeps): Promise<void> {
   const url = new URL("/api/v1/agents/register", baseUrl).toString();
 
-  // catalog_hash is intentionally a fixed placeholder for v0.2.
-  // v0.3+ will compute from actual tool catalog.
+  // catalog_hash is intentionally a fixed placeholder for v0.3.
+  // A future release will compute this from the actual tool catalog.
   const payload: RegisterAgentPayload = {
     agent: {
       external_id: agentId,
@@ -55,7 +55,7 @@ export async function registerAgentOnce({
       plugin_version: pluginVersion,
     },
     tools: [],
-    catalog_hash: "empty-v0.2",
+    catalog_hash: "empty-v0.3",
   };
 
   try {

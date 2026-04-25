@@ -48,15 +48,19 @@ openclaw gateway restart
 
 ### 4. Pick your policies
 
-Visit **Dashboard → Policies** at [openclaw.cogna8.ai](https://openclaw.cogna8.ai) and enable the ones that matter for your workflow:
+Visit **Dashboard → Policies** at [openclaw.cogna8.ai](https://openclaw.cogna8.ai) and enable the pre-built templates:
 
-- **Block secret file writes** - stops agents writing to `.env`, `.ssh`, `.aws`, credentials files
-- **Block destructive deletes in system paths** - stops agents deleting your home directory, `/etc`, `/usr`
-- **Confirm sudo and rm -rf** - pauses for your confirmation on risky shell commands
-- **Block outbound calls to untrusted domains** - prevents data exfiltration via HTTP
-- **Confirm git push to protected branches** - stops accidental pushes to `main` or `production`
+- **Block shell command execution** — prevents `bash`, `sh`, `zsh`, `powershell`, and related variants
+- **Block file deletions** — prevents `rm`, `unlink`, `trash`, and compound variants
+- **Block file writes** — prevents writes including to `.env`, `.ssh`, `.aws`, credentials files
+- **Block outbound HTTP** — prevents data exfiltration via HTTP calls
+- **Block code execution** — prevents `python`, `node`, `eval`, and related execution tools
 
-You can also add custom rules for specific tools, or disable any predefined policy.
+You can also create custom rules for specific tools — for example, confirm rules that pause for your approval before running `sudo`, `rm -rf`, or `git push` to protected branches.
+
+### How confirmations appear
+
+When a confirm rule matches a tool call, OpenClaw delivers an approval prompt through whichever channel you're using — Telegram inline keyboard, Slack Block Kit buttons, Discord components, TUI prompt, or any other channel supported by your OpenClaw setup. You approve or deny in-channel. OpenClaw handles the UX; Cogna8 records the outcome for your audit log.
 
 ### 5. Verify
 
@@ -64,10 +68,12 @@ Trigger a tool call in OpenClaw. In the gateway logs you'll see:
 
 ```
 [cogna8] Agent registered (external_id=default, public_id=agt_..., status=synced)
-[cogna8] evaluate allowed tool_name=read_file
+[cogna8] Registered. Evaluating tool calls against https://openclaw-api.cogna8.ai (agent: default, failureMode: open)
 ```
 
-If a policy matches, you'll see `blocked` or `requires_approval` instead of `allowed`.
+If a block rule matches, you'll see `[cogna8] Blocked tool call <tool_name> ...`.
+
+If a confirm rule matches, you'll see `[cogna8] Approval required for <tool_name> (decision_id=ev_...)`.
 
 In the Portal, the **Usage** page shows your evaluation count incrementing live, and the **Agents** page shows your plugin's registration.
 
