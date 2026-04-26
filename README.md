@@ -125,7 +125,19 @@ These behaviors are intentionally not configurable in v0.4. They use sensible de
 
 On plugin load, the plugin registers the configured agent with Cogna8 by calling `POST /api/v1/agents/register`. Registration is idempotent - subsequent restarts return `synced` status.
 
-One Cogna8 agent identity is used per plugin install, using the `agentId` from config (default `"default"`). All OpenClaw tool calls routed through this plugin are evaluated against that single Cogna8 identity. Multi-agent support is planned.
+## Multi-agent support
+
+This plugin transparently handles multiple OpenClaw agents within a single install.
+
+When OpenClaw provides agent identity in the `before_tool_call` context (`ctx.agentId`), the plugin uses that identity as the Cogna8 agent's `external_id`. Each distinct agent is registered with the service on first sight and is then resolved independently on every evaluate request. Agents have independent rules and audit trails.
+
+When OpenClaw does not provide agent identity, or provides an empty value, the plugin falls back to `config.agentId` (default `"default"`). This preserves backward compatibility for single-agent installs.
+
+Registration is lazy. The first tool call for a newly seen agent waits for registration before evaluate, so the service can resolve the agent. Subsequent calls for that agent do not repeat registration in the same plugin process. If the plugin process restarts, agents may be re-registered; the service treats this idempotently and returns `synced`.
+
+**Capacity:** a Cogna8 account allows up to 10 active agents by default. If you need more, contact us. Attempts to register an 11th agent are rejected by the service; evaluate calls for that unregistered agent will fall back to your configured `failureMode`.
+
+**Migrating from multiple plugin configs to one:** if you currently run multiple plugin instances with distinct `agentId` values, you can collapse them into a single install. Existing Cogna8 agent rows are keyed by `external_id`, so rule continuity is preserved as long as OpenClaw supplies the same agent identity.
 
 ## Free tier
 

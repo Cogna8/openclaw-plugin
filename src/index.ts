@@ -1,9 +1,10 @@
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk/plugin-entry";
+import { InMemoryAgentRegistry } from "./agent-registry.js";
 import { BreakerOpenError, CircuitBreaker } from "./circuit-breaker.js";
 import { normalizeConfig } from "./config.js";
 import { callEvaluate } from "./evaluate-client.js";
-import { registerAgentOnce, PLUGIN_VERSION } from "./register-client.js";
+import { PLUGIN_VERSION, registerAgentOrThrow } from "./register-client.js";
 import { reportResolution } from "./resolve-client.js";
 import type {
   Cogna8PluginConfig,
@@ -11,8 +12,6 @@ import type {
   PluginApprovalResolution,
 } from "./types.js";
 import { clampString, truncateRawInput } from "./utils.js";
-
-let didRegister = false;
 
 export default definePluginEntry({
   id: "cogna8",
@@ -30,10 +29,40 @@ export default definePluginEntry({
     }
 
     const breaker = new CircuitBreaker(5, 30_000, api.logger);
+    const registry = new InMemoryAgentRegistry();
+
+    function resolveEffectiveAgentId(ctx: { agentId?: string }): string {
+      return typeof ctx.agentId === "string" && ctx.agentId.trim().length > 0
+        ? ctx.agentId.trim()
+        : config.agentId;
+    }
+
+    async function ensureAgentRegistered(agentId: string): Promise<void> {
+      await registry.ensureRegistered(agentId, async () => {
+        await registerAgentOrThrow({
+          baseUrl: config.serverUrl,
+          apiKey: config.apiKey,
+          agentId,
+          pluginVersion: PLUGIN_VERSION,
+          logger: api.logger,
+        });
+      });
+    }
 
     api.on("before_tool_call", async (event, ctx) => {
+      const effectiveAgentId = resolveEffectiveAgentId(ctx);
+
+      try {
+        await ensureAgentRegistered(effectiveAgentId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        api.logger.warn(
+          `[cogna8] Lazy registration of agent ${effectiveAgentId} failed: ${message}; proceeding to evaluate so failureMode can apply if needed`,
+        );
+      }
+
       const request: EvaluateRequest = {
-        agent_id: config.agentId,
+        agent_id: effectiveAgentId,
         session: {
           id: clampString(ctx.sessionId ?? ctx.sessionKey, "unknown", 256),
           ...(typeof ctx.sessionKey === "string" && ctx.sessionKey.length > 0
@@ -118,16 +147,14 @@ export default definePluginEntry({
     });
 
     api.on("gateway_start", async () => {
-      if (didRegister) return;
-      didRegister = true;
-
-      await registerAgentOnce({
-        baseUrl: config.serverUrl,
-        apiKey: config.apiKey,
-        agentId: config.agentId,
-        pluginVersion: PLUGIN_VERSION,
-        logger: api.logger,
-      });
+      try {
+        await ensureAgentRegistered(config.agentId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        api.logger.warn(
+          `[cogna8] Default agent warm-up registration failed: ${message}`,
+        );
+      }
     });
 
     api.logger.info(

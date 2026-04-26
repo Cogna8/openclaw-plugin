@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import plugin from "../src/index.js";
 import * as evaluateClient from "../src/evaluate-client.js";
+import * as registerClient from "../src/register-client.js";
 import * as resolveClient from "../src/resolve-client.js";
 import type { PluginApprovalResolution } from "../src/types.js";
 
@@ -47,6 +48,9 @@ describe("before_tool_call confirm branch", () => {
     evaluateSpy = vi.spyOn(evaluateClient, "callEvaluate") as never;
     resolveSpy = vi.spyOn(resolveClient, "reportResolution") as never;
     resolveSpy.mockResolvedValue(undefined);
+    vi.spyOn(registerClient, "registerAgentOrThrow").mockResolvedValue(
+      undefined,
+    );
   });
 
   afterEach(() => {
