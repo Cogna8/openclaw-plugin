@@ -1,6 +1,6 @@
 // Keep in sync with package.json version on every release.
 // MUST update both package.json version and this constant in the same commit.
-export const PLUGIN_VERSION = "0.4.0";
+export const PLUGIN_VERSION = "0.5.0";
 
 export type RegisterAgentPayload = {
   agent: {
@@ -35,7 +35,7 @@ export type RegisterClientDeps = {
   };
 };
 
-export async function registerAgentOnce({
+export async function registerAgentOrThrow({
   baseUrl,
   apiKey,
   agentId,
@@ -45,8 +45,8 @@ export async function registerAgentOnce({
 }: RegisterClientDeps): Promise<void> {
   const url = new URL("/api/v1/agents/register", baseUrl).toString();
 
-  // catalog_hash is intentionally a fixed placeholder for v0.3.
-  // A future release will compute this from the actual tool catalog.
+  // catalog_hash is intentionally a fixed placeholder.
+  // A future release (COG-163) will compute this from the actual tool catalog.
   const payload: RegisterAgentPayload = {
     agent: {
       external_id: agentId,
@@ -58,56 +58,61 @@ export async function registerAgentOnce({
     catalog_hash: "empty-v0.3",
   };
 
+  const res = await fetchImpl(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  let data: RegisterAgentResponse | Record<string, unknown> | null = null;
   try {
-    const res = await fetchImpl(url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(payload),
-    });
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
 
-    const text = await res.text();
-    let data: RegisterAgentResponse | Record<string, unknown> | null = null;
-    try {
-      data = text ? JSON.parse(text) : null;
-    } catch {
-      data = null;
-    }
+  if (!res.ok) {
+    const detail =
+      (data && typeof data === "object" && "error" in data
+        ? String((data as { error: unknown }).error)
+        : "") ||
+      text ||
+      `HTTP ${res.status}`;
+    throw new Error(`Agent registration failed: ${detail}`);
+  }
 
-    if (!res.ok) {
-      const detail =
-        (data && typeof data === "object" && "error" in data
-          ? String((data as { error: unknown }).error)
-          : "") ||
-        text ||
-        `HTTP ${res.status}`;
-      logger.warn(`[cogna8] Agent registration failed: ${detail}`);
-      return;
-    }
+  const publicId =
+    data &&
+    typeof data === "object" &&
+    "agent" in data &&
+    (data as RegisterAgentResponse).agent?.id
+      ? String((data as RegisterAgentResponse).agent.id)
+      : "unknown";
 
-    const publicId =
-      data &&
-      typeof data === "object" &&
-      "agent" in data &&
-      (data as RegisterAgentResponse).agent?.id
-        ? String((data as RegisterAgentResponse).agent.id)
-        : "unknown";
+  const status =
+    data &&
+    typeof data === "object" &&
+    "agent" in data &&
+    (data as RegisterAgentResponse).agent?.status
+      ? String((data as RegisterAgentResponse).agent.status)
+      : "unknown";
 
-    const status =
-      data &&
-      typeof data === "object" &&
-      "agent" in data &&
-      (data as RegisterAgentResponse).agent?.status
-        ? String((data as RegisterAgentResponse).agent.status)
-        : "unknown";
+  logger.info(
+    `[cogna8] Agent registered (external_id=${agentId}, public_id=${publicId}, status=${status})`,
+  );
+}
 
-    logger.info(
-      `[cogna8] Agent registered (external_id=${agentId}, public_id=${publicId}, status=${status})`,
-    );
+export async function registerAgentOnce(
+  args: RegisterClientDeps,
+): Promise<void> {
+  try {
+    await registerAgentOrThrow(args);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    logger.warn(`[cogna8] Agent registration failed: ${message}`);
+    args.logger?.warn?.(`[cogna8] ${message}`);
   }
 }
