@@ -102,6 +102,25 @@ All policy logic runs server-side. The plugin is a thin transport layer. You can
 | `timeoutMs` | `3000` | Evaluate request timeout in milliseconds |
 | `failureMode` | `open` | `open` allows on failure, `closed` blocks on failure |
 
+## Resilience
+
+The plugin automatically retries transient service errors and trips a circuit breaker on sustained failure to keep your tool calls healthy during deploys, blips, or service outages.
+
+**Retry policy** (not configurable):
+
+- Single retry on 502, 503, 504, and network errors (ECONNRESET, ETIMEDOUT, EAI_AGAIN, ENETUNREACH).
+- 200ms delay before retry.
+- Both attempts share the `timeoutMs` budget — total time is bounded at the configured `timeoutMs` (default 3000ms).
+- 4xx, 500, and abort errors are not retried.
+
+**Circuit breaker** (not configurable):
+
+- After 5 consecutive transient failures, the breaker opens.
+- While open, evaluate calls bypass the service for 30 seconds and apply `failureMode` directly.
+- A single successful evaluate after cooldown closes the breaker.
+
+These behaviors are intentionally not configurable in v0.4. They use sensible defaults derived from operational experience. If you observe them mis-tuned in production, file an issue.
+
 ## Automatic agent registration
 
 On plugin load, the plugin registers the configured agent with Cogna8 by calling `POST /api/v1/agents/register`. Registration is idempotent - subsequent restarts return `synced` status.

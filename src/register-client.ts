@@ -1,6 +1,6 @@
 // Keep in sync with package.json version on every release.
 // MUST update both package.json version and this constant in the same commit.
-export const PLUGIN_VERSION = "0.3.0";
+export const PLUGIN_VERSION = "0.4.0";
 
 export type RegisterAgentPayload = {
   agent: {

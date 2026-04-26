@@ -63,3 +63,12 @@ export type PluginApprovalResolution =
   | "deny"
   | "timeout"
   | "cancelled";
+
+export type TransientFailureCode =
+  | 502
+  | 503
+  | 504
+  | "ECONNRESET"
+  | "ETIMEDOUT"
+  | "EAI_AGAIN"
+  | "ENETUNREACH";

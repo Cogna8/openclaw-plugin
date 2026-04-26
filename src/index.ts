@@ -1,5 +1,6 @@
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk/plugin-entry";
+import { BreakerOpenError, CircuitBreaker } from "./circuit-breaker.js";
 import { normalizeConfig } from "./config.js";
 import { callEvaluate } from "./evaluate-client.js";
 import { registerAgentOnce, PLUGIN_VERSION } from "./register-client.js";
@@ -28,6 +29,8 @@ export default definePluginEntry({
       return;
     }
 
+    const breaker = new CircuitBreaker(5, 30_000, api.logger);
+
     api.on("before_tool_call", async (event, ctx) => {
       const request: EvaluateRequest = {
         agent_id: config.agentId,
@@ -47,7 +50,10 @@ export default definePluginEntry({
       };
 
       try {
-        const result = await callEvaluate(config, request);
+        const result = await callEvaluate(config, request, {
+          breaker,
+          logger: api.logger,
+        });
 
         if (result.decision === "confirm") {
           api.logger.info(
@@ -90,8 +96,15 @@ export default definePluginEntry({
 
         return;
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        api.logger.warn(`[cogna8] Evaluate failed: ${message}`);
+        if (error instanceof BreakerOpenError) {
+          api.logger.warn(
+            "[cogna8] Breaker open, applying failureMode without calling service",
+          );
+        } else {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          api.logger.warn(`[cogna8] Evaluate failed: ${message}`);
+        }
 
         if (config.failureMode === "closed") {
           return {
