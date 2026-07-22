@@ -154,4 +154,13 @@ Registration is lazy. The first tool call for a newly seen agent waits for regis
 
 ## License
 
-MIT. See [LICENSE](./LICENSE).
+This project is available under the [MIT License](./LICENSE).
+
+> Please make it work.<br>
+> Love, Daniel.
+
+## Dedication
+
+Dedicated to Giora, Mike, Adam, Igor and Alex — my good friends and inspirations.
+
+Thank you.
