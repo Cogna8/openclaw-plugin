@@ -1,0 +1,7 @@
+onlyBuiltDependencies:
+  - '@google/genai'
+  - esbuild
+  - koffi
+  - openclaw
+  - protobufjs
+  - tree-sitter-bash

@@ -68,7 +68,7 @@ export async function registerAgentOrThrow({
   });
 
   const text = await res.text();
-  let data: RegisterAgentResponse | Record<string, unknown> | null = null;
+  let data: RegisterAgentResponse | Record<string, unknown> | null;
   try {
     data = text ? JSON.parse(text) : null;
   } catch {
